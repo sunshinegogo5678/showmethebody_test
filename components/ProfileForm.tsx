@@ -51,9 +51,14 @@ async function getCroppedImg(imageSrc: string, pixelCrop: any): Promise<Blob> {
   });
 }
 
+// [수정된 함수] const -> let 변경
 function dataURLtoBlob(dataurl: string) {
-    const arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)?.[1];
-    const bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+    const arr = dataurl.split(',');
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    const bstr = atob(arr[1]);
+    let n = bstr.length; // 여기가 let이어야 합니다!
+    const u8arr = new Uint8Array(n);
     while(n--){
         u8arr[n] = bstr.charCodeAt(n);
     }
@@ -79,7 +84,6 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ mode, initialData, onC
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const [tempImageSrc, setTempImageSrc] = useState<string | null>(null);
 
-  // full_image_url 상태 관리 추가
   const [formData, setFormData] = useState<Partial<CharacterProfile> & { full_image_url?: string | null }>(initialData || {
     name_kr: '',
     name_en: '',
@@ -143,7 +147,6 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ mode, initialData, onC
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
 
-  // [핵심] 원본(전신)과 크롭(3:4) 이미지 동시 업로드
   const uploadImages = async () => {
     try {
       if (!tempImageSrc || !croppedAreaPixels) return;
@@ -166,7 +169,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ mode, initialData, onC
         .from('avatars')
         .getPublicUrl(originalFileName);
 
-      // 2. 크롭 업로드 (3:4 비율)
+      // 2. 크롭 업로드
       const croppedBlob = await getCroppedImg(tempImageSrc, croppedAreaPixels);
       const croppedFileName = `crop_${timestamp}_${randomStr}.jpg`;
 
@@ -183,8 +186,8 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ mode, initialData, onC
       // 3. 데이터 적용
       setFormData(prev => ({
           ...prev,
-          image_url: cropPublicUrl,       // 대표 이미지 (3:4)
-          full_image_url: originalPublicUrl // 원본 이미지 (전신)
+          image_url: cropPublicUrl,
+          full_image_url: originalPublicUrl 
       }));
 
       setIsCropModalOpen(false);
@@ -209,7 +212,6 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ mode, initialData, onC
             id: user.id, 
             ...safeFormData,
             image_url: formData.image_url || DEFAULT_AVATAR_URL,
-            // [DB 컬럼 필요] profiles 테이블에 full_image_url 컬럼이 있어야 함
             full_image_url: formData.full_image_url || formData.image_url, 
             updated_at: new Date().toISOString()
         };
@@ -236,7 +238,6 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ mode, initialData, onC
   const renderStep1 = () => (
       <div className="space-y-6 animate-fade-in">
           <div className="flex flex-col items-center justify-center mb-6">
-              {/* 3:4 비율 미리보기 컨테이너 */}
               <div className="relative w-32 h-[170px] mb-4 group"> 
                   <div className="w-full h-full rounded-xl border-2 border-[#d4af37] overflow-hidden bg-black relative shadow-[0_0_15px_rgba(212,175,55,0.3)]">
                       {uploading ? (
@@ -392,7 +393,6 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ mode, initialData, onC
             <div className="w-full max-w-2xl">
                 <SectionCard title={mode === 'create' ? "PERSONNEL ONBOARDING DOSSIER" : "UPDATE PERSONNEL RECORD"} noPadding>
                     <div className="p-8">
-                        {/* Step Indicator */}
                         <div className="flex items-center justify-center mb-8 gap-4">
                             <div className={`flex items-center gap-2 ${step >= 1 ? 'text-[#d4af37]' : 'text-gray-600'}`}>
                                 <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-xs ${step >= 1 ? 'border-[#d4af37] bg-[#d4af37]/10' : 'border-gray-600'}`}>1</div>
@@ -448,7 +448,6 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ mode, initialData, onC
             </div>
         </div>
 
-        {/* --- CROP MODAL --- */}
         {isCropModalOpen && tempImageSrc && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
                 <div className="bg-[#020f0a] border border-[#d4af37] w-full max-w-lg flex flex-col shadow-2xl animate-fade-in">
@@ -468,7 +467,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({ mode, initialData, onC
                             image={tempImageSrc}
                             crop={crop}
                             zoom={zoom}
-                            aspect={3 / 4} // [핵심] 3:4 비율 고정
+                            aspect={3 / 4}
                             onCropChange={setCrop}
                             onCropComplete={onCropComplete}
                             onZoomChange={setZoom}
